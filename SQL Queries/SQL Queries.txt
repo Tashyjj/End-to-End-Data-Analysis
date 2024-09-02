@@ -1,0 +1,80 @@
+Question 1:
+	Find the top 10 products that have the highest sales
+	
+	SQL Query:
+		Select top 10 product_id, sum(sale_price) as Sales From df_orders group by product_id Order by Sales desc
+		//getting the product, summing up all the sales prices from every time that product was sold
+		
+
+
+Question 2:
+	Find the top 5 highest selling products in each region
+	
+	SQL Query:
+		with cte as (
+		Select region, product_id, sum(sale_price) as Sales 
+		from df_orders 
+		group by region, product_id)
+		select * from (
+		select *
+		, row_number() over(partition by region order by Sales desc) as rank_number
+		from cte) A
+		where rank_number <= 5
+		
+
+Question 3:
+	Find a side by side of the sales each month in 2022 vs 2023
+	
+	SQL Query:
+		with cte as (
+		select year(order_date) as Order_Year, month(order_date) as Order_Month, 
+		sum(sale_price) as Sales 
+		from df_orders
+		group by year(order_date), month(order_date))
+
+		select Order_Month
+		, sum(case when Order_Year = 2022 then Sales else 0 end) as sales_2022
+		, sum(case when Order_Year = 2023 then Sales else 0 end) as sales_2023
+		from cte
+		group by Order_Month
+		order by Order_Month
+		
+		
+Question 4:
+	Find the month with the highest sales for each category
+	
+	SQL Query:
+		with cte as (
+		select category, format(order_date,'yyyy-MM') as order_year_month
+		, sum(sale_price) as Sales
+		from df_orders
+		group by category, format(order_date,'yyyy-MM')
+		)
+		select * from (
+		select *,
+		row_number() over(partition by category order by Sales desc) as rank_number
+		from cte) A
+		where rank_number = 1
+	
+	
+Question 5:
+	Which sub category had the highest growth by profit in 2023 vs 2022
+	
+	SQL Query:
+		with cte as (
+		select sub_category, year(order_date) as Order_Year, 
+		sum(sale_price) as Sales 
+		from df_orders
+		group by sub_category, year(order_date))
+
+		, cte2 as (
+		select sub_category
+		, sum(case when Order_Year = 2022 then Sales else 0 end) as sales_2022
+		, sum(case when Order_Year = 2023 then Sales else 0 end) as sales_2023
+		from cte
+		group by sub_category)
+
+		select *
+		,((sales_2023 - sales_2022) / sales_2022 * 100) as growth_percent
+		from cte2
+		order by growth_percent desc
